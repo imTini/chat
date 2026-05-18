@@ -7,11 +7,11 @@
   "license": "ISC",
   "author": "Martin Jude",
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace=apps/api\" \"npm run dev --workspace=apps/web\"",
-    "dev:api": "npm run dev --workspace=apps/api",
-    "dev:web": "npm run dev --workspace=apps/web",
-    "build": "npm run build --workspaces --if-present",
-    "start": "npm run start --workspace=apps/api"
+    "dev": "concurrently \"npm --prefix apps/api run dev\" \"npm --prefix apps/web run dev\"",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/api run build && npm --prefix apps/web run build",
+    "start": "npm --prefix apps/api run start"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
