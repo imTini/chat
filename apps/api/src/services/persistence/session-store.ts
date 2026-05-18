@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import type { ChatHistoryItem } from "node-llama-cpp";
 import type { SessionMeta } from "../llama/session-manager.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -13,17 +14,17 @@ async function ensureDir(): Promise<void> {
 export async function saveSession(
   id: string,
   meta: SessionMeta,
-  history: unknown
+  history: ChatHistoryItem[]
 ): Promise<void> {
   await ensureDir();
   const file = path.join(DATA_DIR, `${id}.json`);
   await fs.writeFile(file, JSON.stringify({ meta, history }, null, 2));
 }
 
-export async function listSessions(): Promise<Array<{ meta: SessionMeta; history: unknown[] }>> {
+export async function listSessions(): Promise<Array<{ meta: SessionMeta; history: ChatHistoryItem[] }>> {
   await ensureDir();
   const files = await fs.readdir(DATA_DIR);
-  const results: Array<{ meta: SessionMeta; history: unknown[] }> = [];
+  const results: Array<{ meta: SessionMeta; history: ChatHistoryItem[] }> = [];
 
   for (const file of files) {
     if (!file.endsWith(".json")) continue;

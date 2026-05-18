@@ -1,4 +1,4 @@
-import { LlamaChatSession } from "node-llama-cpp";
+import { LlamaChatSession, type ChatHistoryItem } from "node-llama-cpp";
 import { getModel } from "./client.js";
 import { saveSession, listSessions, deleteSessionFile } from "../persistence/session-store.js";
 import { v4 as uuidv4 } from "uuid";
@@ -28,7 +28,7 @@ export async function createSession(name: string): Promise<SessionMeta> {
   const session = new LlamaChatSession({ contextSequence: context.getSequence() });
 
   sessions.set(id, { meta, session });
-  await saveSession(id, meta, await session.getChatHistory());
+  await saveSession(id, meta, session.getChatHistory());
   return meta;
 }
 
@@ -52,14 +52,14 @@ export async function persistSession(id: string): Promise<void> {
   const active = sessions.get(id);
   if (!active) return;
   active.meta.lastUsedAt = new Date().toISOString();
-  await saveSession(id, active.meta, await active.session.getChatHistory());
+  await saveSession(id, active.meta, active.session.getChatHistory());
 }
 
 export async function loadAllSessions(): Promise<void> {
   const stored = await listSessions();
   const model = getModel();
 
-  for (const { meta, history } of stored) {
+  for (const { meta, history } of stored as Array<{ meta: SessionMeta; history: ChatHistoryItem[] }>) {
     const context = await model.createContext();
     const session = new LlamaChatSession({ contextSequence: context.getSequence() });
     if (history && history.length > 0) {
