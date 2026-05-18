@@ -1,0 +1,49 @@
+import { useEffect, useRef } from "react";
+import type { Message } from "../hooks/useChat.js";
+
+interface Props {
+  messages: Message[];
+}
+
+export function MessageList({ messages }: Props) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  if (messages.length === 0) {
+    return (
+      <div className="empty-state">
+        <p>Send a message to start the conversation.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="message-list">
+      {messages.map((msg, i) => (
+        <div key={i} className={`message ${msg.role}`}>
+          <div className="message-role">{msg.role === "user" ? "You" : "Assistant"}</div>
+          {msg.imageDataUrl && (
+            <div className="message-image">
+              <img src={msg.imageDataUrl} alt="attached" />
+            </div>
+          )}
+          {msg.content && (
+            <div className="message-content">
+              {msg.content}
+              {msg.streaming && <span className="cursor" />}
+            </div>
+          )}
+          {!msg.content && msg.streaming && (
+            <div className="message-content">
+              <span className="cursor" />
+            </div>
+          )}
+        </div>
+      ))}
+      <div ref={bottomRef} />
+    </div>
+  );
+}
