@@ -40,7 +40,19 @@ const start = async () => {
 
   try {
     await app.listen({ port: 3001, host: "0.0.0.0" });
-    console.log("API running on http://localhost:3001");
+    app.log.info("API running on http://localhost:3001");
+
+    const frontendUrl = process.env.FRONTEND_URL?.trim();
+    if (frontendUrl) {
+      app.log.info({ frontendUrl }, "Frontend URL");
+    } else {
+      app.log.info(
+        "FRONTEND_URL not set: npm run start serves API only on port 3001 (frontend not served by this process).",
+      );
+      app.log.info(
+        "Frontend options: dev via Vite on http://localhost:5173; production from apps/web/dist (typically behind Nginx on 80/443).",
+      );
+    }
   } catch (err) {
     app.log.error({ err }, "Failed to start API server.");
     process.exit(1);
