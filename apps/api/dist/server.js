@@ -1,10 +1,17 @@
 import Fastify from "fastify";
+import fastifyStatic from "@fastify/static";
 import { initLlama, loadModel } from "./services/llama/client.js";
 import { loadAllSessions } from "./services/llama/session-manager.js";
 import { healthRoutes } from "./routes/health.js";
 import { sessionRoutes } from "./routes/sessions.js";
 import { chatRoutes } from "./routes/chat.js";
 import { modelRoutes } from "./routes/models.js";
+import { fileURLToPath } from "url";
+import path from "path";
+import fs from "fs";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// In production: dist/server.js → ../../web/dist = apps/web/dist
+const WEB_DIST = path.resolve(__dirname, "../../web/dist");
 const app = Fastify({ logger: true });
 app.addHook("onRequest", async (req, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
@@ -18,6 +25,18 @@ app.register(healthRoutes);
 app.register(sessionRoutes);
 app.register(chatRoutes);
 app.register(modelRoutes);
+// Serve React SPA from apps/web/dist in production
+if (fs.existsSync(WEB_DIST)) {
+    app.register(fastifyStatic, {
+        root: WEB_DIST,
+        prefix: "/",
+        decorateReply: false,
+    });
+    // SPA fallback: unmatched routes serve index.html
+    app.setNotFoundHandler((_req, reply) => {
+        reply.sendFile("index.html");
+    });
+}
 const start = async () => {
     try {
         console.log("Initializing llama...");
@@ -35,13 +54,11 @@ const start = async () => {
     try {
         await app.listen({ port: 3001, host: "0.0.0.0" });
         app.log.info("API running on http://localhost:3001");
-        const frontendUrl = process.env.FRONTEND_URL?.trim();
-        if (frontendUrl) {
-            app.log.info({ frontendUrl }, "Frontend URL");
+        if (fs.existsSync(WEB_DIST)) {
+            app.log.info("Frontend (apps/web/dist) served at http://0.0.0.0:3001/");
         }
         else {
-            app.log.info("FRONTEND_URL not set: npm run start serves API only on port 3001 (frontend not served by this process).");
-            app.log.info("Frontend options: dev via Vite on http://localhost:5173; production from apps/web/dist (typically behind Nginx on 80/443).");
+            app.log.warn("apps/web/dist not found — run `npm run build` first to serve the frontend. Dev: http://localhost:5173");
         }
     }
     catch (err) {
