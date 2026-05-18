@@ -1,3 +1,9 @@
+import { fileURLToPath } from "url";
+import path from "path";
+import dotenv from "dotenv";
+const __envDir = path.dirname(fileURLToPath(import.meta.url));
+// Load .env from repo root (3 levels up from apps/api/src/)
+dotenv.config({ path: path.resolve(__envDir, "../../../.env") });
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyCookie from "@fastify/cookie";
@@ -11,10 +17,8 @@ import { authRoutes } from "./routes/auth.js";
 import { authPlugin } from "./plugins/auth.js";
 import { initDb } from "./db/index.js";
 import { migrate } from "./db/migrate.js";
-import { fileURLToPath } from "url";
-import path from "path";
 import fs from "fs";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = __envDir;
 // In production: dist/server.js → ../../web/dist = apps/web/dist
 const WEB_DIST = path.resolve(__dirname, "../../web/dist");
 const app = Fastify({ logger: true });

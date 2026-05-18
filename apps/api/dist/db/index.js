@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import * as schema from "./schema.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SQLITE_PATH = path.resolve(__dirname, "../../../../../data/chat.db");
+const SQLITE_PATH = path.resolve(__dirname, "../../../../data/chat.db");
 // Use `any` to avoid TypeScript union-type conflicts between SQLite and Postgres
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _db = null;

@@ -1,5 +1,5 @@
 /**
  * Creates tables if they don't exist. Safe to call on every startup.
- * For SQLite, uses `db.run()` (synchronous). For Postgres, uses `db.execute()` (async).
+ * SQLite uses synchronous db.run(); Postgres uses async db.execute() with proper column types.
  */
 export declare function migrate(): Promise<void>;
