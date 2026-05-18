@@ -1,4 +1,4 @@
-import { getDb } from "./index.js";
+import { getDb, getDbBackend } from "./index.js";
 import { sql } from "drizzle-orm";
 
 /**
@@ -7,7 +7,7 @@ import { sql } from "drizzle-orm";
  */
 export async function migrate(): Promise<void> {
   const db = getDb();
-  const isPg = process.env.NODE_ENV === "production";
+  const isPg = getDbBackend() === "postgres";
 
   if (isPg) {
     await db.execute(sql`

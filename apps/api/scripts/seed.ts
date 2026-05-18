@@ -6,8 +6,8 @@
  * Env vars (via .env at repo root):
  *   SEED_USERNAME  (default: admin)
  *   SEED_PASSWORD  (default: changeme)
- *   NODE_ENV       set to "production" for Postgres
- *   DATABASE_URL   required in production
+ *   NODE_ENV       set to "production" for production defaults
+ *   DATABASE_URL   when set, Postgres is used for init/migrations
  */
 import { fileURLToPath } from "url";
 import path from "path";

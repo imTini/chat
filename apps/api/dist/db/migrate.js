@@ -1,4 +1,4 @@
-import { getDb } from "./index.js";
+import { getDb, getDbBackend } from "./index.js";
 import { sql } from "drizzle-orm";
 /**
  * Creates tables if they don't exist. Safe to call on every startup.
@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
  */
 export async function migrate() {
     const db = getDb();
-    const isPg = process.env.NODE_ENV === "production";
+    const isPg = getDbBackend() === "postgres";
     if (isPg) {
         await db.execute(sql `
       CREATE TABLE IF NOT EXISTS users (
