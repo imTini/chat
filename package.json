@@ -7,6 +7,8 @@
   "license": "ISC",
   "author": "Martin Jude",
   "scripts": {
+    "postinstall": "npm run models:pull",
+    "models:pull": "node-llama-cpp pull --dir ./models hf:bartowski/gemma-4-E4B-it-GGUF:Q3_K_S",
     "dev": "concurrently \"npm --prefix apps/api run dev\" \"npm --prefix apps/web run dev\"",
     "dev:api": "npm --prefix apps/api run dev",
     "dev:web": "npm --prefix apps/web run dev",
