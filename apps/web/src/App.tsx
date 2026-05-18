@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { MessageList } from "./components/MessageList";
 import { Composer } from "./components/Composer";
@@ -10,13 +10,16 @@ import { useChat } from "./hooks/useChat";
 import { useModels } from "./hooks/useModels";
 import { useToast } from "./hooks/useToast";
 import { useAuth } from "./hooks/useAuth";
+import { fetchSessionMessages } from "./lib/api.js";
 
 export default function App() {
   const { user, loading: authLoading, login, logout } = useAuth();
   const { sessions, load: loadSessions, create, remove } = useSessions();
   const { models, loading: modelLoading, currentModel, load: loadModels, switchModel } = useModels();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const { messages, generating, send, stop, reset } = useChat(activeId);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const historyRequestRef = useRef(0);
+  const { messages, generating, send, stop, reset, loadHistory } = useChat(activeId);
   const { toasts, addToast, dismiss: dismissToast } = useToast();
 
   useEffect(() => {
@@ -34,14 +37,31 @@ export default function App() {
     return <LoginPage onLogin={login} />;
   }
 
-  const handleSelect = (id: string) => {
+  const handleSelect = async (id: string) => {
+    const requestId = historyRequestRef.current + 1;
+    historyRequestRef.current = requestId;
+    setHistoryLoading(true);
     setActiveId(id);
     reset();
+    try {
+      const history = await fetchSessionMessages(id);
+      if (historyRequestRef.current !== requestId) return;
+      loadHistory(history);
+    } catch {
+      if (historyRequestRef.current !== requestId) return;
+      addToast("Failed to load session history", "error");
+    } finally {
+      if (historyRequestRef.current === requestId) {
+        setHistoryLoading(false);
+      }
+    }
   };
 
   const handleCreate = async (name: string) => {
     try {
       const meta = await create(name);
+      historyRequestRef.current += 1;
+      setHistoryLoading(false);
       setActiveId(meta.id);
       reset();
     } catch (e) {
@@ -52,6 +72,8 @@ export default function App() {
   const handleDelete = async (id: string) => {
     await remove(id);
     if (id === activeId) {
+      historyRequestRef.current += 1;
+      setHistoryLoading(false);
       setActiveId(null);
       reset();
     }
@@ -62,6 +84,8 @@ export default function App() {
       await switchModel(filename);
       // sessions are cleared on model switch, reload
       await loadSessions();
+      historyRequestRef.current += 1;
+      setHistoryLoading(false);
       setActiveId(null);
       reset();
       const loaded = models.find((m) => m.filename === filename);
@@ -104,7 +128,7 @@ export default function App() {
           onSend={send}
           onStop={stop}
           generating={generating}
-          disabled={!activeId}
+          disabled={!activeId || historyLoading}
           hasVision={hasVision}
         />
       </div>

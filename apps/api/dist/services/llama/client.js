@@ -1,13 +1,28 @@
-import { getLlama } from "node-llama-cpp";
+import { getLlama, LlamaLogLevel } from "node-llama-cpp";
 import path from "path";
 import { fileURLToPath } from "url";
+import os from "os";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const MODELS_DIR = path.resolve(__dirname, "../../../../../models");
+// Leave 1 core for the OS/Node event loop; floor at 1.
+export const LLAMA_THREADS = process.env.LLAMA_MAX_THREADS
+    ? Math.max(1, parseInt(process.env.LLAMA_MAX_THREADS, 10))
+    : Math.max(1, os.cpus().length - 1);
+// 1.5 GB RAM headroom (Linux default is only 1 GB).
+const RAM_PADDING_BYTES = 1.5 * 1024 * 1024 * 1024;
 let llamaInstance = null;
 let llamaModel = null;
 let currentModelPath = null;
 export async function initLlama() {
-    llamaInstance = await getLlama("lastBuild");
+    llamaInstance = await getLlama({
+        // Auto-select best backend (CPU on this VPS; picks CUDA/Vulkan automatically if ever added).
+        gpu: "auto",
+        // Cap threads to avoid starving the Node.js event loop.
+        maxThreads: LLAMA_THREADS,
+        // Explicit RAM headroom: Linux default is 1 GB; 1.5 GB is safer on an 8 GB host.
+        ramPadding: RAM_PADDING_BYTES,
+        logLevel: LlamaLogLevel.warn,
+    });
 }
 export async function loadModel(modelPath) {
     if (!llamaInstance)

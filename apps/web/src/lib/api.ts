@@ -38,6 +38,11 @@ export interface StreamDonePayload {
   totalTokens: number;
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 // Auth
 export async function login(username: string, password: string): Promise<UserInfo> {
   const res = await fetch(`${API}/api/auth/login`, {
@@ -62,6 +67,12 @@ export async function fetchMe(): Promise<UserInfo | null> {
 
 export async function fetchSessions(): Promise<SessionMeta[]> {
   const res = await fetch(`${API}/api/sessions`, { credentials: "include" });
+  return res.json();
+}
+
+export async function fetchSessionMessages(sessionId: string): Promise<ChatMessage[]> {
+  const res = await fetch(`${API}/api/sessions/${sessionId}/messages`, { credentials: "include" });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 

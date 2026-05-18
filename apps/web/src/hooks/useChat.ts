@@ -170,5 +170,12 @@ export function useChat(sessionId: string | null) {
     cancelRef.current = null;
   }, [flushTokenQueue]);
 
-  return { messages, generating, send, stop, reset };
+  const loadHistory = useCallback((history: Array<{ role: "user" | "assistant"; content: string }>) => {
+    flushTokenQueue();
+    setMessages(history);
+    setGenerating(false);
+    cancelRef.current = null;
+  }, [flushTokenQueue]);
+
+  return { messages, generating, send, stop, reset, loadHistory };
 }

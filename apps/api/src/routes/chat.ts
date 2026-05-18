@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { ChatHistoryItem, ChatModelResponse } from "node-llama-cpp";
 import {
   getSession,
   setAbortController,
@@ -9,7 +10,63 @@ import {
 import { incrementTokenCount } from "../services/auth/auth-service.js";
 import { createStreamChunkSmoother } from "../services/llama/stream-smoother.js";
 
+interface ApiChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+function safeJson(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
+}
+
+function flattenModelResponse(response: ChatModelResponse["response"]): string {
+  return response
+    .map((part) => {
+      if (typeof part === "string") return part;
+      if (part.type === "segment") return part.text;
+      if (part.type === "functionCall") {
+        const params = safeJson(part.params);
+        const result = safeJson(part.result);
+        return `${part.name}(${params}) => ${result}`;
+      }
+      return "";
+    })
+    .join("");
+}
+
+function toApiMessages(history: ChatHistoryItem[]): ApiChatMessage[] {
+  const messages: ApiChatMessage[] = [];
+
+  for (const item of history) {
+    if (item.type === "user") {
+      messages.push({ role: "user", content: item.text });
+      continue;
+    }
+    if (item.type === "model") {
+      messages.push({ role: "assistant", content: flattenModelResponse(item.response) });
+    }
+  }
+
+  return messages;
+}
+
 export async function chatRoutes(app: FastifyInstance): Promise<void> {
+  app.get<{ Params: { id: string } }>("/api/sessions/:id/messages", async (req, reply) => {
+    const { id } = req.params;
+    const active = await getSession(id);
+    if (!active) return reply.status(404).send({ error: "session not found" });
+
+    if (active.meta.userId !== req.user!.id) {
+      return reply.status(403).send({ error: "forbidden" });
+    }
+
+    return toApiMessages(active.session.getChatHistory());
+  });
+
   app.post<{ Params: { id: string }; Body: { content: string } }>(
     "/api/sessions/:id/messages",
     async (req, reply) => {

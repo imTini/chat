@@ -2,78 +2,78 @@
 
 ## Project Overview
 
-Local LLM chat app — Node.js/TypeScript backend (Fastify + node-llama-cpp) serving REST + SSE, React SPA frontend consuming the API. GGUF models are loaded from `./models/`. Chat history is persisted as JSON files in `./data/sessions/`.
+Monorepo local LLM chat app:
+- `apps/api`: Fastify + TypeScript + `node-llama-cpp` backend, with cookie auth and SSE chat streaming.
+- `apps/web`: React + Vite frontend.
+- Models are GGUF files under repo-level `./models`.
+- Persistence is database-backed (SQLite by default, Postgres when `DATABASE_URL` is set), with chat history stored in the `sessions` table.
 
-## Commands
+## Build, test, and lint commands
 
 ```bash
-# Development (runs api + web concurrently via npm workspaces)
+# Install dependencies (postinstall auto-runs model pull)
+npm install
+
+# Pull/update GGUF models into ./models manually
+npm run models:pull
+
+# Run both API + web in dev
 npm run dev
 
-# Individual workspaces
-npm run dev:api      # tsx watch on apps/api/src/server.ts → http://localhost:3001
-npm run dev:web      # Vite dev server → http://localhost:5173
+# Run one workspace in dev
+npm run dev:api
+npm run dev:web
 
-# Build all
+# Build both workspaces
 npm run build
 
-# Run API production build
+# Run production API build
+npm run start
+# or
 npm run start --workspace=apps/api
+
+# Seed first login user (admin/changeme unless env overrides)
+npm run seed
 ```
 
-All scripts use **npm workspaces** (not pnpm, despite claude.md mentioning pnpm — the root `package.json` uses npm).
+Test/lint status:
+- There are currently no `test` scripts and no `lint` scripts in root, `apps/api`, or `apps/web`.
+- Single-test command is not available yet because no test runner is configured.
 
-## Architecture
+## High-level architecture
 
-```
-apps/api/src/
-  server.ts                         ← Fastify bootstrap: init llama → load model → load sessions → listen
-  routes/                           ← health, sessions, chat (SSE), models
-  services/llama/
-    client.ts                       ← Singleton: getLlama(), loadModel(), getModel()
-    session-manager.ts              ← In-memory Map of LlamaChatSession + AbortController per session
-    model-info.ts                   ← Reads GGUF metadata via readGgufFileInfo()
-  services/persistence/
-    session-store.ts                ← Reads/writes ./data/sessions/{uuid}.json (meta + chat history)
+### Backend boot flow (`apps/api/src/server.ts`)
+1. Loads `.env` from repo root explicitly via `dotenv`.
+2. Initializes DB and runs migrations (`initDb()` + `migrate()`).
+3. Registers cookie + auth plugin and routes.
+4. Attempts llama startup (`initLlama()` → `loadModel()` → `loadAllSessions()`).
+5. Starts Fastify on `:3001`; if `apps/web/dist` exists, serves SPA statically from API.
 
-apps/web/src/
-  App.tsx                           ← Root: wires useSessions, useChat, useModels
-  hooks/useChat.ts                  ← Calls streamMessage(), manages messages[] state
-  lib/api.ts                        ← All fetch calls + SSE stream parser (fetch + ReadableStream)
-```
+Important nuance: model startup failures are logged, but API still starts in degraded mode so auth/session endpoints can remain available.
 
-**Startup sequence (critical):** `initLlama()` → `loadModel()` → `loadAllSessions()` → `app.listen()`. All three must succeed or the process exits.
+### Data and auth model
+- Drizzle ORM with runtime backend selection:
+  - SQLite file at `data/chat.db` in local/dev by default.
+  - Postgres when `DATABASE_URL` is set (or in production).
+- Core tables: `users`, `user_sessions` (auth cookie tokens), `sessions` (chat metadata + serialized history).
+- No public registration route; first user is created via `npm run seed`.
 
-**Model switching** (`POST /api/models/load`): clears all in-memory sessions, loads the new model, then reloads all sessions from disk against the new model context.
+### Chat flow (API + web)
+- `POST /api/sessions/:id/messages` streams SSE directly with `reply.raw`.
+- Server emits token events (`type: "token"`) and a final `event: done` payload including `usedInputTokens`, `usedOutputTokens`, and `totalTokens`.
+- Server applies stream chunk smoothing (`stream-smoother.ts`) before emitting.
+- Frontend consumes SSE with `fetch` + `ReadableStream` and manual parsing (`parseSSEChunk` in `apps/web/src/lib/api.ts`), then applies additional UI-side token draining in `useChat`.
 
-## Key Conventions
+### Session/model lifecycle
+- Active llama sessions are in-memory (`Map`) with per-session `AbortController`.
+- Session history is persisted to DB on create and after each generation (including abort paths).
+- Model switch (`POST /api/models/load`) clears in-memory sessions, loads selected model, then reloads persisted sessions from DB into new llama contexts.
 
-### SSE Streaming
-The chat endpoint (`POST /api/sessions/:id/messages`) responds with `Content-Type: text/event-stream` using `reply.raw` directly — Fastify's normal `reply.send()` is bypassed. Token events:
-```
-data: {"delta":"text chunk","type":"token"}\n\n
-event: done\ndata: {"fullResponse":"..."}\n\n
-```
-The frontend uses `fetch` + `ReadableStream` (not `EventSource`) to support POST requests. SSE parsing is done manually in `lib/api.ts#parseSSEChunk`.
+## Key conventions (project-specific)
 
-### Session Lifecycle
-- Each session = one `LlamaContext` + one `LlamaChatSession` (held in memory).
-- Persisted immediately after `createSession()` and after every completed/aborted generation (`persistSession()`).
-- On server restart, `loadAllSessions()` reconstructs each session via `session.setChatHistory(history)`.
-- Model switch invalidates all sessions — `clearAllSessions()` disposes in-memory state; disk files are preserved and reloaded against the new model.
-
-### Abort / Stop
-A per-session `AbortController` is stored in `session-manager.ts`. `POST /api/sessions/:id/stop` calls `controller.abort()`. The `session.prompt()` call uses `{ signal, stopOnAbortSignal: true }`. The `finally` block always runs `persistSession()` and sends the `done` event regardless of abort.
-
-### API Base URL
-`apps/web/src/lib/api.ts` sets `const API = ""` — all requests go to the same origin. Vite proxies `/api` and `/health` to `http://localhost:3001` in dev.
-
-### TypeScript
-- `"module": "NodeNext"` — all imports in `apps/api` must use `.js` extensions even for `.ts` source files (e.g. `import { foo } from "./bar.js"`).
-- Strict mode enabled everywhere.
-
-### Model Files
-GGUF models live in `./models/` (repo root level). `client.ts` resolves paths relative to `MODELS_DIR`. The default model loaded at startup is `gemma-4-E4B-it-Q3_K_S.gguf`. Vision capability is detected by keywords in filename/architecture (`llava`, `vl`, `vision`, etc.).
-
-### No Shared Package in Use
-`packages/shared/` exists in the architecture diagram but is not yet implemented. Types are duplicated between `apps/api` (e.g. `SessionMeta`, `ModelInfo`) and `apps/web/src/lib/api.ts`.
+- **Auth is enforced in plugin preHandler** (`apps/api/src/plugins/auth.ts`) for `/api/*` routes except `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`; handlers expect `req.user`.
+- **Ownership checks are mandatory** on session routes (`session.meta.userId` must match `req.user.id`).
+- **Frontend requests always send cookies** (`credentials: "include"` in `apps/web/src/lib/api.ts`).
+- **API base URL is same-origin** (`const API = ""`); Vite dev proxy forwards `/api` and `/health` to `http://localhost:3001`.
+- **TypeScript NodeNext rules apply in API**: internal imports use `.js` extension in `.ts` source files.
+- **Model metadata/capabilities are inferred** from GGUF metadata + filename heuristics (`model-info.ts`), not from a static registry.

@@ -51,6 +51,43 @@ export async function listSessions(): Promise<Array<{ meta: SessionMeta; history
   }));
 }
 
+export async function listSessionMetas(): Promise<SessionMeta[]> {
+  const db = getDb();
+  const rows = await db.select().from(sessions);
+  return rows.map((row: Session) => ({
+    id: row.id,
+    name: row.name,
+    userId: row.userId,
+    createdAt: row.createdAt,
+    lastUsedAt: row.lastUsedAt,
+  }));
+}
+
+export async function loadSessionById(
+  id: string
+): Promise<{ meta: SessionMeta; history: ChatHistoryItem[] } | null> {
+  const db = getDb();
+  const rows = await db.select().from(sessions).where(eq(sessions.id, id));
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    meta: {
+      id: row.id,
+      name: row.name,
+      userId: row.userId,
+      createdAt: row.createdAt,
+      lastUsedAt: row.lastUsedAt,
+    },
+    history: (() => {
+      try {
+        return JSON.parse(row.history) as ChatHistoryItem[];
+      } catch {
+        return [];
+      }
+    })(),
+  };
+}
+
 export async function deleteSessionFile(id: string): Promise<void> {
   const db = getDb();
   await db.delete(sessions).where(eq(sessions.id, id));

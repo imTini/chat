@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 import * as schema from "./schema.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SQLITE_PATH = path.resolve(__dirname, "../../../../data/chat.db");
+const DEFAULT_SQLITE_PATH = path.resolve(__dirname, "../../../../data/chat.db");
 type DbBackend = "sqlite" | "postgres";
 
 // Use `any` to avoid TypeScript union-type conflicts between SQLite and Postgres
@@ -15,12 +15,22 @@ type DbBackend = "sqlite" | "postgres";
 let _db: any = null;
 let _backend: DbBackend | null = null;
 
+function isPostgresUrl(url: string): boolean {
+  return url.startsWith("postgres://") || url.startsWith("postgresql://");
+}
+
 function shouldUsePostgres(): boolean {
-  const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim());
-  if (process.env.NODE_ENV === "production" && !hasDatabaseUrl) {
+  const dbUrl = process.env.DATABASE_URL?.trim();
+  if (process.env.NODE_ENV === "production" && !dbUrl) {
     throw new Error("DATABASE_URL env var required in production.");
   }
-  return process.env.NODE_ENV === "production" || hasDatabaseUrl;
+  return Boolean(dbUrl && isPostgresUrl(dbUrl));
+}
+
+function getSqlitePath(): string {
+  const dbUrl = process.env.DATABASE_URL?.trim();
+  if (dbUrl && !isPostgresUrl(dbUrl)) return dbUrl;
+  return DEFAULT_SQLITE_PATH;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,13 +48,12 @@ export async function initDb(): Promise<void> {
   if (_db) return;
 
   if (shouldUsePostgres()) {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error("DATABASE_URL env var required for Postgres.");
+    const url = process.env.DATABASE_URL!;
     const pool = new pg.Pool({ connectionString: url });
     _db = drizzlePg(pool, { schema });
     _backend = "postgres";
   } else {
-    const sqlite = new Database(SQLITE_PATH);
+    const sqlite = new Database(getSqlitePath());
     sqlite.pragma("journal_mode = WAL");
     _db = drizzleSqlite(sqlite, { schema });
     _backend = "sqlite";

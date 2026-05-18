@@ -1,7 +1,54 @@
 import { getSession, setAbortController, clearAbortController, getAbortController, persistSession, } from "../services/llama/session-manager.js";
 import { incrementTokenCount } from "../services/auth/auth-service.js";
 import { createStreamChunkSmoother } from "../services/llama/stream-smoother.js";
+function safeJson(value) {
+    try {
+        return JSON.stringify(value);
+    }
+    catch {
+        return "";
+    }
+}
+function flattenModelResponse(response) {
+    return response
+        .map((part) => {
+        if (typeof part === "string")
+            return part;
+        if (part.type === "segment")
+            return part.text;
+        if (part.type === "functionCall") {
+            const params = safeJson(part.params);
+            const result = safeJson(part.result);
+            return `${part.name}(${params}) => ${result}`;
+        }
+        return "";
+    })
+        .join("");
+}
+function toApiMessages(history) {
+    const messages = [];
+    for (const item of history) {
+        if (item.type === "user") {
+            messages.push({ role: "user", content: item.text });
+            continue;
+        }
+        if (item.type === "model") {
+            messages.push({ role: "assistant", content: flattenModelResponse(item.response) });
+        }
+    }
+    return messages;
+}
 export async function chatRoutes(app) {
+    app.get("/api/sessions/:id/messages", async (req, reply) => {
+        const { id } = req.params;
+        const active = await getSession(id);
+        if (!active)
+            return reply.status(404).send({ error: "session not found" });
+        if (active.meta.userId !== req.user.id) {
+            return reply.status(403).send({ error: "forbidden" });
+        }
+        return toApiMessages(active.session.getChatHistory());
+    });
     app.post("/api/sessions/:id/messages", async (req, reply) => {
         const { id } = req.params;
         const { content } = req.body;

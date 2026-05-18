@@ -23,7 +23,7 @@ export async function modelRoutes(app: FastifyInstance): Promise<void> {
     if (!filename) return reply.status(400).send({ error: "filename required" });
 
     try {
-      clearAllSessions();
+      await clearAllSessions();
       await loadModel(filename);
       await loadAllSessions();
       return { ok: true, filename };
