@@ -114,6 +114,7 @@ export function useChat(sessionId: string | null) {
       const cancel = streamMessage(
         sessionId,
         content,
+        imageDataUrl,
         (delta) => {
           tokenQueueRef.current += delta;
           ensureTokenDrain();

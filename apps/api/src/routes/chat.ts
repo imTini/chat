@@ -67,13 +67,13 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
     return toApiMessages(active.session.getChatHistory());
   });
 
-  app.post<{ Params: { id: string }; Body: { content: string } }>(
+  app.post<{ Params: { id: string }; Body: { content: string; imageDataUrl?: string } }>(
     "/api/sessions/:id/messages",
     async (req, reply) => {
       const { id } = req.params;
-      const { content } = req.body;
+      const { content, imageDataUrl } = req.body;
 
-      if (!content) return reply.status(400).send({ error: "content required" });
+      if (!content && !imageDataUrl) return reply.status(400).send({ error: "content required" });
 
       const active = await getSession(id);
       if (!active) return reply.status(404).send({ error: "session not found" });
@@ -100,7 +100,10 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       });
 
       try {
-        await active.session.prompt(content, {
+        const promptText = imageDataUrl
+          ? (content ? `[User attached an image]\n${content}` : "[User attached an image]")
+          : content;
+        await active.session.prompt(promptText, {
           signal: abortController.signal,
           stopOnAbortSignal: true,
           onTextChunk(chunk: string) {

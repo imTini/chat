@@ -130,6 +130,7 @@ function parseSSEChunk(text: string): Array<{ event?: string; data: string }> {
 export function streamMessage(
   sessionId: string,
   content: string,
+  imageDataUrl: string | undefined,
   onToken: (delta: string) => void,
   onDone: (payload: StreamDonePayload) => void,
   onError: (err: string) => void
@@ -140,7 +141,7 @@ export function streamMessage(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, ...(imageDataUrl ? { imageDataUrl } : {}) }),
   })
     .then(async (res) => {
       if (!res.ok || !res.body) {

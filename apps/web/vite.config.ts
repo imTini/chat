@@ -10,4 +10,9 @@ export default defineConfig({
       "/health": "http://localhost:3001",
     },
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test-setup.ts"],
+  },
 });

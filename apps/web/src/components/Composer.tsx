@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent, useEffect, useCallback, DragEvent } from "react";
+import { useState, useRef, KeyboardEvent, useEffect, useCallback, DragEvent, ChangeEvent } from "react";
 
 interface Props {
   onSend: (content: string, imageDataUrl?: string) => void;
@@ -13,6 +13,7 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const readImageFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) return;
@@ -94,6 +95,16 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
     setDragOver(false);
   };
 
+  const handleFileInput = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (!hasVision) return;
+      const file = e.target.files?.[0];
+      if (file) readImageFile(file);
+      e.target.value = "";
+    },
+    [hasVision, readImageFile]
+  );
+
   const handleDrop = (event: DragEvent<HTMLElement>) => {
     if (!hasFilePayload(event)) return;
     event.preventDefault();
@@ -142,6 +153,28 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
         rows={3}
       />
       <div className="composer-actions">
+        {hasVision && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="file-input-hidden"
+              onChange={handleFileInput}
+              disabled={disabled || generating}
+              aria-label="Attach image"
+            />
+            <button
+              className="attach-btn btn-animated"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || generating}
+              title="Attach image"
+              type="button"
+            >
+              📎
+            </button>
+          </>
+        )}
         {generating ? (
           <button key="stop" className="stop-btn btn-animated" onClick={onStop}>
             <span className="btn-stop-icon">■</span> Stop
