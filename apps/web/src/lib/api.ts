@@ -9,6 +9,7 @@ export interface SessionMeta {
 
 export interface ModelCapabilities {
   vision: boolean;
+  imageGeneration: boolean;
   embedding: boolean;
 }
 

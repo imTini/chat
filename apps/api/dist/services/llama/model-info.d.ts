@@ -1,5 +1,6 @@
 export interface ModelCapabilities {
     vision: boolean;
+    imageGeneration: boolean;
     embedding: boolean;
 }
 export interface ModelInfo {

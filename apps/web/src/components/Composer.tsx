@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent, useEffect, useCallback } from "react";
+import { useState, useRef, KeyboardEvent, useEffect, useCallback, DragEvent } from "react";
 
 interface Props {
   onSend: (content: string, imageDataUrl?: string) => void;
@@ -10,15 +10,25 @@ interface Props {
 
 export function Composer({ onSend, onStop, generating, disabled, hasVision }: Props) {
   const [text, setText] = useState("");
-  const [pastedImage, setPastedImage] = useState<string | null>(null);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const readImageFile = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setAttachedImage((ev.target?.result as string) ?? null);
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   const handleSend = () => {
     const trimmed = text.trim();
-    if ((!trimmed && !pastedImage) || generating || disabled) return;
-    onSend(trimmed, pastedImage ?? undefined);
+    if ((!trimmed && !attachedImage) || generating || disabled) return;
+    onSend(trimmed, attachedImage ?? undefined);
     setText("");
-    setPastedImage(null);
+    setAttachedImage(null);
     textareaRef.current?.focus();
   };
 
@@ -38,17 +48,13 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
         if (item.type.startsWith("image/")) {
           const file = item.getAsFile();
           if (!file) continue;
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            setPastedImage(ev.target?.result as string);
-          };
-          reader.readAsDataURL(file);
+          readImageFile(file);
           e.preventDefault();
           break;
         }
       }
     },
-    [hasVision]
+    [hasVision, readImageFile]
   );
 
   useEffect(() => {
@@ -58,14 +64,62 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
     return () => ta.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
+  useEffect(() => {
+    if (!hasVision) {
+      setAttachedImage(null);
+      setDragOver(false);
+    }
+  }, [hasVision]);
+
+  const hasFilePayload = (event: DragEvent<HTMLElement>) =>
+    Array.from(event.dataTransfer.types).includes("Files");
+
+  const handleDragEnter = (event: DragEvent<HTMLElement>) => {
+    if (!hasFilePayload(event)) return;
+    event.preventDefault();
+    if (hasVision && !disabled && !generating) setDragOver(true);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLElement>) => {
+    if (!hasFilePayload(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = hasVision && !disabled && !generating ? "copy" : "none";
+    if (hasVision && !disabled && !generating) setDragOver(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLElement>) => {
+    if (!hasVision) return;
+    const nextTarget = event.relatedTarget as Node | null;
+    if (nextTarget && event.currentTarget.contains(nextTarget)) return;
+    setDragOver(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLElement>) => {
+    if (!hasFilePayload(event)) return;
+    event.preventDefault();
+    setDragOver(false);
+    if (!hasVision || disabled || generating) return;
+    const imageFile = Array.from(event.dataTransfer.files).find((file) =>
+      file.type.startsWith("image/")
+    );
+    if (imageFile) readImageFile(imageFile);
+  };
+
   return (
-    <div className="composer">
-      {pastedImage && (
+    <div
+      className={`composer ${dragOver ? "drag-over" : ""}`}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {hasVision && dragOver && <div className="composer-drop-hint">Drop an image to attach</div>}
+      {attachedImage && (
         <div className="composer-image-preview">
-          <img src={pastedImage} alt="pasted" />
+          <img src={attachedImage} alt="attached" />
           <button
             className="remove-image-btn"
-            onClick={() => setPastedImage(null)}
+            onClick={() => setAttachedImage(null)}
             title="Remove image"
           >
             ×
@@ -81,7 +135,7 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
           disabled
             ? "Select a session to start chatting"
             : hasVision
-            ? "Type a message… (Paste an image with Ctrl+V)"
+            ? "Type a message… (paste or drop an image)"
             : "Type a message… (Enter to send, Shift+Enter for newline)"
         }
         disabled={disabled || generating}
@@ -89,14 +143,15 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
       />
       <div className="composer-actions">
         {generating ? (
-          <button className="stop-btn" onClick={onStop}>
-            Stop
+          <button key="stop" className="stop-btn btn-animated" onClick={onStop}>
+            <span className="btn-stop-icon">■</span> Stop
           </button>
         ) : (
           <button
-            className="send-btn"
+            key="send"
+            className="send-btn btn-animated"
             onClick={handleSend}
-            disabled={disabled || (!text.trim() && !pastedImage)}
+            disabled={disabled || (!text.trim() && !attachedImage)}
           >
             Send
           </button>

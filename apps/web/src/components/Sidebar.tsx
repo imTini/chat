@@ -11,11 +11,21 @@ interface Props {
 
 export function Sidebar({ sessions, activeId, onSelect, onCreate, onDelete }: Props) {
   const [newName, setNewName] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleCreate = () => {
     const name = newName.trim() || `Chat ${sessions.length + 1}`;
     onCreate(name);
     setNewName("");
+  };
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setDeletingId(id);
+    setTimeout(() => {
+      onDelete(id);
+      setDeletingId(null);
+    }, 180);
   };
 
   return (
@@ -30,22 +40,19 @@ export function Sidebar({ sessions, activeId, onSelect, onCreate, onDelete }: Pr
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           placeholder="New session name..."
         />
-        <button onClick={handleCreate}>+</button>
+        <button onClick={handleCreate} title="Create session">+</button>
       </div>
       <div className="session-list">
         {sessions.map((s) => (
           <div
             key={s.id}
-            className={`session-item ${s.id === activeId ? "active" : ""}`}
-            onClick={() => onSelect(s.id)}
+            className={`session-item${s.id === activeId ? " active" : ""}${deletingId === s.id ? " deleting" : ""}`}
+            onClick={() => deletingId !== s.id && onSelect(s.id)}
           >
             <span className="session-name">{s.name}</span>
             <button
               className="delete-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(s.id);
-              }}
+              onClick={(e) => handleDelete(e, s.id)}
               title="Delete session"
             >
               ×

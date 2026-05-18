@@ -5,6 +5,7 @@ import { MODELS_DIR, getCurrentModelPath } from "./client.js";
 
 export interface ModelCapabilities {
   vision: boolean;
+  imageGeneration: boolean;
   embedding: boolean;
 }
 
@@ -24,6 +25,27 @@ function detectVision(filename: string, architecture: string): boolean {
   return ["llava", "vision", "vl", "clip", "multimodal", "mmproj", "bakllava"].some((k) =>
     lower.includes(k)
   );
+}
+
+function detectImageGeneration(filename: string, architecture: string, name: string): boolean {
+  const lower = `${filename} ${architecture} ${name}`.toLowerCase();
+  return [
+    /\bsdxl\b/,
+    /\bsd3\b/,
+    /\bstable[-_ ]?diffusion\b/,
+    /\bdiffusion\b/,
+    /\bflux\b/,
+    /\bpixart\b/,
+    /\bhunyuan\b/,
+    /\bimage[-_ ]?gen\b/,
+    /\btext[-_ ]?to[-_ ]?image\b/,
+    /\bt2i\b/,
+  ].some((pattern) => pattern.test(lower));
+}
+
+function detectEmbedding(filename: string, architecture: string, name: string): boolean {
+  const lower = `${filename} ${architecture} ${name}`.toLowerCase();
+  return ["bert", "embed", "embedding", "bge", "e5", "gte"].some((k) => lower.includes(k));
 }
 
 function humanParamCount(count: number | bigint | undefined): string | undefined {
@@ -91,7 +113,8 @@ export async function listModels(): Promise<ModelInfo[]> {
 
       const capabilities: ModelCapabilities = {
         vision: detectVision(filename, architecture),
-        embedding: architecture.toLowerCase().includes("bert"),
+        imageGeneration: detectImageGeneration(filename, architecture, name),
+        embedding: detectEmbedding(filename, architecture, name),
       };
 
       return {

@@ -5,7 +5,7 @@ import type { ChatHistoryItem } from "node-llama-cpp";
 import type { SessionMeta } from "../llama/session-manager.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.resolve(__dirname, "../../../../../../data/sessions");
+const DATA_DIR = path.resolve(__dirname, "../../../../../data/sessions");
 
 async function ensureDir(): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });

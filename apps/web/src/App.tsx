@@ -3,15 +3,18 @@ import { Sidebar } from "./components/Sidebar";
 import { MessageList } from "./components/MessageList";
 import { Composer } from "./components/Composer";
 import { ModelHeader } from "./components/ModelHeader";
+import { Toast } from "./components/Toast";
 import { useSessions } from "./hooks/useSessions";
 import { useChat } from "./hooks/useChat";
 import { useModels } from "./hooks/useModels";
+import { useToast } from "./hooks/useToast";
 
 export default function App() {
   const { sessions, load: loadSessions, create, remove } = useSessions();
   const { models, loading: modelLoading, currentModel, load: loadModels, switchModel } = useModels();
   const [activeId, setActiveId] = useState<string | null>(null);
   const { messages, generating, send, stop, reset } = useChat(activeId);
+  const { toasts, addToast, dismiss: dismissToast } = useToast();
 
   useEffect(() => {
     loadSessions();
@@ -42,11 +45,17 @@ export default function App() {
   };
 
   const handleModelSwitch = async (filename: string) => {
-    await switchModel(filename);
-    // sessions are cleared on model switch, reload
-    await loadSessions();
-    setActiveId(null);
-    reset();
+    try {
+      await switchModel(filename);
+      // sessions are cleared on model switch, reload
+      await loadSessions();
+      setActiveId(null);
+      reset();
+      const loaded = models.find((m) => m.filename === filename);
+      addToast(`Loaded ${loaded?.name ?? filename}`, "success");
+    } catch {
+      addToast(`Failed to load model`, "error");
+    }
   };
 
   const activeSession = sessions.find((s) => s.id === activeId);
@@ -84,6 +93,7 @@ export default function App() {
           hasVision={hasVision}
         />
       </div>
+      <Toast toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

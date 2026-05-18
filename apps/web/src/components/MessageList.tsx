@@ -15,6 +15,7 @@ export function MessageList({ messages }: Props) {
   if (messages.length === 0) {
     return (
       <div className="empty-state">
+        <div className="empty-state-icon">💬</div>
         <p>Send a message to start the conversation.</p>
       </div>
     );
@@ -37,8 +38,10 @@ export function MessageList({ messages }: Props) {
             </div>
           )}
           {!msg.content && msg.streaming && (
-            <div className="message-content">
-              <span className="cursor" />
+            <div className="message-content thinking">
+              <span className="thinking-dot" />
+              <span className="thinking-dot" />
+              <span className="thinking-dot" />
             </div>
           )}
         </div>

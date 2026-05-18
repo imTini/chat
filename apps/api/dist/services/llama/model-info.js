@@ -6,6 +6,25 @@ function detectVision(filename, architecture) {
     const lower = (filename + " " + architecture).toLowerCase();
     return ["llava", "vision", "vl", "clip", "multimodal", "mmproj", "bakllava"].some((k) => lower.includes(k));
 }
+function detectImageGeneration(filename, architecture, name) {
+    const lower = `${filename} ${architecture} ${name}`.toLowerCase();
+    return [
+        /\bsdxl\b/,
+        /\bsd3\b/,
+        /\bstable[-_ ]?diffusion\b/,
+        /\bdiffusion\b/,
+        /\bflux\b/,
+        /\bpixart\b/,
+        /\bhunyuan\b/,
+        /\bimage[-_ ]?gen\b/,
+        /\btext[-_ ]?to[-_ ]?image\b/,
+        /\bt2i\b/,
+    ].some((pattern) => pattern.test(lower));
+}
+function detectEmbedding(filename, architecture, name) {
+    const lower = `${filename} ${architecture} ${name}`.toLowerCase();
+    return ["bert", "embed", "embedding", "bge", "e5", "gte"].some((k) => lower.includes(k));
+}
 function humanParamCount(count) {
     if (count == null)
         return undefined;
@@ -71,7 +90,8 @@ export async function listModels() {
         }
         const capabilities = {
             vision: detectVision(filename, architecture),
-            embedding: architecture.toLowerCase().includes("bert"),
+            imageGeneration: detectImageGeneration(filename, architecture, name),
+            embedding: detectEmbedding(filename, architecture, name),
         };
         return {
             filename,
