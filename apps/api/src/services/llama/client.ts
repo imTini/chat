@@ -16,11 +16,16 @@ export async function initLlama(): Promise<void> {
 export async function loadModel(modelPath?: string): Promise<void> {
   if (!llamaInstance) throw new Error("Llama not initialized");
 
+  const defaultModel = process.env.MODEL_PATH ?? path.join(MODELS_DIR, "gemma-4-E4B-it-Q3_K_S.gguf");
   const resolvedPath = modelPath
     ? path.isAbsolute(modelPath)
       ? modelPath
       : path.join(MODELS_DIR, modelPath)
-    : path.join(MODELS_DIR, "gemma-4-E4B-it-Q3_K_S.gguf");
+    : defaultModel;
+
+  if (!(await import("fs/promises").then(fs => fs.access(resolvedPath).then(() => true, () => false)))) {
+    throw new Error(`Model file not found: ${resolvedPath}`);
+  }
 
   if (llamaModel) {
     await llamaModel.dispose();
