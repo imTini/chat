@@ -3,8 +3,15 @@ const API = "";
 export interface SessionMeta {
   id: string;
   name: string;
+  userId: string;
   createdAt: string;
   lastUsedAt: string;
+}
+
+export interface UserInfo {
+  id: string;
+  username: string;
+  tokenCount: number;
 }
 
 export interface ModelCapabilities {
@@ -24,8 +31,37 @@ export interface ModelInfo {
   isLoaded: boolean;
 }
 
+export interface StreamDonePayload {
+  fullResponse: string;
+  usedInputTokens: number;
+  usedOutputTokens: number;
+  totalTokens: number;
+}
+
+// Auth
+export async function login(username: string, password: string): Promise<UserInfo> {
+  const res = await fetch(`${API}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) throw new Error("Invalid credentials");
+  return res.json();
+}
+
+export async function logout(): Promise<void> {
+  await fetch(`${API}/api/auth/logout`, { method: "POST", credentials: "include" });
+}
+
+export async function fetchMe(): Promise<UserInfo | null> {
+  const res = await fetch(`${API}/api/auth/me`, { credentials: "include" });
+  if (res.status === 401) return null;
+  return res.json();
+}
+
 export async function fetchSessions(): Promise<SessionMeta[]> {
-  const res = await fetch(`${API}/api/sessions`);
+  const res = await fetch(`${API}/api/sessions`, { credentials: "include" });
   return res.json();
 }
 
@@ -33,6 +69,7 @@ export async function createSession(name: string): Promise<SessionMeta> {
   const res = await fetch(`${API}/api/sessions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ name }),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -40,15 +77,15 @@ export async function createSession(name: string): Promise<SessionMeta> {
 }
 
 export async function deleteSession(id: string): Promise<void> {
-  await fetch(`${API}/api/sessions/${id}`, { method: "DELETE" });
+  await fetch(`${API}/api/sessions/${id}`, { method: "DELETE", credentials: "include" });
 }
 
 export async function stopGeneration(id: string): Promise<void> {
-  await fetch(`${API}/api/sessions/${id}/stop`, { method: "POST" });
+  await fetch(`${API}/api/sessions/${id}/stop`, { method: "POST", credentials: "include" });
 }
 
 export async function fetchModels(): Promise<ModelInfo[]> {
-  const res = await fetch(`${API}/api/models`);
+  const res = await fetch(`${API}/api/models`, { credentials: "include" });
   return res.json();
 }
 
@@ -56,6 +93,7 @@ export async function loadModel(filename: string): Promise<void> {
   const res = await fetch(`${API}/api/models/load`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ filename }),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -82,7 +120,7 @@ export function streamMessage(
   sessionId: string,
   content: string,
   onToken: (delta: string) => void,
-  onDone: (fullResponse: string) => void,
+  onDone: (payload: StreamDonePayload) => void,
   onError: (err: string) => void
 ): () => void {
   let aborted = false;
@@ -90,6 +128,7 @@ export function streamMessage(
   fetch(`${API}/api/sessions/${sessionId}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify({ content }),
   })
     .then(async (res) => {
@@ -116,9 +155,19 @@ export function streamMessage(
           if (event === "done") {
             try {
               const payload = JSON.parse(data);
-              onDone(payload.fullResponse ?? "");
+              onDone({
+                fullResponse: String(payload.fullResponse ?? ""),
+                usedInputTokens: Number(payload.usedInputTokens ?? 0),
+                usedOutputTokens: Number(payload.usedOutputTokens ?? 0),
+                totalTokens: Number(payload.totalTokens ?? 0),
+              });
             } catch {
-              onDone("");
+              onDone({
+                fullResponse: "",
+                usedInputTokens: 0,
+                usedOutputTokens: 0,
+                totalTokens: 0,
+              });
             }
             return;
           }

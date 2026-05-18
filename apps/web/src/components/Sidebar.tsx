@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SessionMeta } from "../lib/api.js";
+import type { SessionMeta, UserInfo } from "../lib/api.js";
 
 interface Props {
   sessions: SessionMeta[];
@@ -7,9 +7,11 @@ interface Props {
   onSelect: (id: string) => void;
   onCreate: (name: string) => void;
   onDelete: (id: string) => void;
+  user: UserInfo;
+  onLogout: () => void;
 }
 
-export function Sidebar({ sessions, activeId, onSelect, onCreate, onDelete }: Props) {
+export function Sidebar({ sessions, activeId, onSelect, onCreate, onDelete, user, onLogout }: Props) {
   const [newName, setNewName] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -62,6 +64,15 @@ export function Sidebar({ sessions, activeId, onSelect, onCreate, onDelete }: Pr
         {sessions.length === 0 && (
           <p className="no-sessions">No sessions yet. Create one above.</p>
         )}
+      </div>
+      <div className="sidebar-footer">
+        <div className="user-info">
+          <span className="user-name">{user.username}</span>
+          <span className="token-count" title="Total tokens used">{user.tokenCount.toLocaleString()} tokens</span>
+        </div>
+        <button className="logout-btn" onClick={onLogout} title="Sign out">
+          Sign out
+        </button>
       </div>
     </div>
   );

@@ -4,12 +4,15 @@ import { MessageList } from "./components/MessageList";
 import { Composer } from "./components/Composer";
 import { ModelHeader } from "./components/ModelHeader";
 import { Toast } from "./components/Toast";
+import { LoginPage } from "./pages/LoginPage";
 import { useSessions } from "./hooks/useSessions";
 import { useChat } from "./hooks/useChat";
 import { useModels } from "./hooks/useModels";
 import { useToast } from "./hooks/useToast";
+import { useAuth } from "./hooks/useAuth";
 
 export default function App() {
+  const { user, loading: authLoading, login, logout } = useAuth();
   const { sessions, load: loadSessions, create, remove } = useSessions();
   const { models, loading: modelLoading, currentModel, load: loadModels, switchModel } = useModels();
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -17,9 +20,19 @@ export default function App() {
   const { toasts, addToast, dismiss: dismissToast } = useToast();
 
   useEffect(() => {
-    loadSessions();
-    loadModels();
-  }, [loadSessions, loadModels]);
+    if (user) {
+      loadSessions();
+      loadModels();
+    }
+  }, [user, loadSessions, loadModels]);
+
+  if (authLoading) {
+    return <div className="auth-loading">Loading…</div>;
+  }
+
+  if (!user) {
+    return <LoginPage onLogin={login} />;
+  }
 
   const handleSelect = (id: string) => {
     setActiveId(id);
@@ -69,6 +82,8 @@ export default function App() {
         onSelect={handleSelect}
         onCreate={handleCreate}
         onDelete={handleDelete}
+        user={user}
+        onLogout={logout}
       />
       <div className="chat-area">
         <div className="top-bar">

@@ -1,4 +1,4 @@
-import { LlamaChatSession, type ChatHistoryItem } from "node-llama-cpp";
+import { LlamaChatSession, LlamaContextSequence, type ChatHistoryItem } from "node-llama-cpp";
 import { getModel } from "./client.js";
 import { saveSession, listSessions, deleteSessionFile } from "../persistence/session-store.js";
 import { v4 as uuidv4 } from "uuid";
@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 export interface SessionMeta {
   id: string;
   name: string;
+  userId: string;
   createdAt: string;
   lastUsedAt: string;
 }
@@ -13,21 +14,23 @@ export interface SessionMeta {
 interface ActiveSession {
   meta: SessionMeta;
   session: LlamaChatSession;
+  contextSequence: LlamaContextSequence;
 }
 
 const sessions = new Map<string, ActiveSession>();
 const abortControllers = new Map<string, AbortController>();
 
-export async function createSession(name: string): Promise<SessionMeta> {
+export async function createSession(name: string, userId: string): Promise<SessionMeta> {
   const id = uuidv4();
   const now = new Date().toISOString();
-  const meta: SessionMeta = { id, name, createdAt: now, lastUsedAt: now };
+  const meta: SessionMeta = { id, name, userId, createdAt: now, lastUsedAt: now };
 
   const model = getModel();
   const context = await model.createContext();
-  const session = new LlamaChatSession({ contextSequence: context.getSequence() });
+  const contextSequence = context.getSequence();
+  const session = new LlamaChatSession({ contextSequence });
 
-  sessions.set(id, { meta, session });
+  sessions.set(id, { meta, session, contextSequence });
   await saveSession(id, meta, session.getChatHistory());
   return meta;
 }
@@ -61,16 +64,23 @@ export async function loadAllSessions(): Promise<void> {
 
   for (const { meta, history } of stored as Array<{ meta: SessionMeta; history: ChatHistoryItem[] }>) {
     const context = await model.createContext();
-    const session = new LlamaChatSession({ contextSequence: context.getSequence() });
+    const contextSequence = context.getSequence();
+    const session = new LlamaChatSession({ contextSequence });
     if (history && history.length > 0) {
       await session.setChatHistory(history);
     }
-    sessions.set(meta.id, { meta, session });
+    sessions.set(meta.id, { meta, session, contextSequence });
   }
 }
 
 export function getAllSessionMetas(): SessionMeta[] {
   return Array.from(sessions.values()).map((s) => s.meta);
+}
+
+export function getSessionMetasByUser(userId: string): SessionMeta[] {
+  return Array.from(sessions.values())
+    .filter((s) => s.meta.userId === userId)
+    .map((s) => s.meta);
 }
 
 export async function deleteSession(id: string): Promise<boolean> {

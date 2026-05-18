@@ -1,11 +1,16 @@
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
+import fastifyCookie from "@fastify/cookie";
 import { initLlama, loadModel } from "./services/llama/client.js";
 import { loadAllSessions } from "./services/llama/session-manager.js";
 import { healthRoutes } from "./routes/health.js";
 import { sessionRoutes } from "./routes/sessions.js";
 import { chatRoutes } from "./routes/chat.js";
 import { modelRoutes } from "./routes/models.js";
+import { authRoutes } from "./routes/auth.js";
+import { authPlugin } from "./plugins/auth.js";
+import { initDb } from "./db/index.js";
+import { migrate } from "./db/migrate.js";
 import { fileURLToPath } from "url";
 import path from "path";
 import fs from "fs";
@@ -17,14 +22,19 @@ const WEB_DIST = path.resolve(__dirname, "../../web/dist");
 const app = Fastify({ logger: true });
 
 app.addHook("onRequest", async (req, reply) => {
-  reply.header("Access-Control-Allow-Origin", "*");
+  reply.header("Access-Control-Allow-Origin", req.headers.origin ?? "*");
   reply.header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
   reply.header("Access-Control-Allow-Headers", "Content-Type");
+  reply.header("Access-Control-Allow-Credentials", "true");
   if (req.method === "OPTIONS") {
     reply.status(204).send();
   }
 });
 
+await app.register(fastifyCookie);
+await app.register(authPlugin);
+
+app.register(authRoutes);
 app.register(healthRoutes);
 app.register(sessionRoutes);
 app.register(chatRoutes);
@@ -44,6 +54,16 @@ if (fs.existsSync(WEB_DIST)) {
 }
 
 const start = async () => {
+  try {
+    console.log("Initializing database...");
+    await initDb();
+    await migrate();
+    console.log("Database ready.");
+  } catch (err) {
+    app.log.error({ err }, "Database initialization failed.");
+    process.exit(1);
+  }
+
   try {
     console.log("Initializing llama...");
     await initLlama();

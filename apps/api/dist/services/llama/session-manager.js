@@ -4,14 +4,15 @@ import { saveSession, listSessions, deleteSessionFile } from "../persistence/ses
 import { v4 as uuidv4 } from "uuid";
 const sessions = new Map();
 const abortControllers = new Map();
-export async function createSession(name) {
+export async function createSession(name, userId) {
     const id = uuidv4();
     const now = new Date().toISOString();
-    const meta = { id, name, createdAt: now, lastUsedAt: now };
+    const meta = { id, name, userId, createdAt: now, lastUsedAt: now };
     const model = getModel();
     const context = await model.createContext();
-    const session = new LlamaChatSession({ contextSequence: context.getSequence() });
-    sessions.set(id, { meta, session });
+    const contextSequence = context.getSequence();
+    const session = new LlamaChatSession({ contextSequence });
+    sessions.set(id, { meta, session, contextSequence });
     await saveSession(id, meta, session.getChatHistory());
     return meta;
 }
@@ -39,15 +40,21 @@ export async function loadAllSessions() {
     const model = getModel();
     for (const { meta, history } of stored) {
         const context = await model.createContext();
-        const session = new LlamaChatSession({ contextSequence: context.getSequence() });
+        const contextSequence = context.getSequence();
+        const session = new LlamaChatSession({ contextSequence });
         if (history && history.length > 0) {
             await session.setChatHistory(history);
         }
-        sessions.set(meta.id, { meta, session });
+        sessions.set(meta.id, { meta, session, contextSequence });
     }
 }
 export function getAllSessionMetas() {
     return Array.from(sessions.values()).map((s) => s.meta);
+}
+export function getSessionMetasByUser(userId) {
+    return Array.from(sessions.values())
+        .filter((s) => s.meta.userId === userId)
+        .map((s) => s.meta);
 }
 export async function deleteSession(id) {
     if (!sessions.has(id))

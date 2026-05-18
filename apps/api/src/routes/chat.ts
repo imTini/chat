@@ -6,6 +6,8 @@ import {
   getAbortController,
   persistSession,
 } from "../services/llama/session-manager.js";
+import { incrementTokenCount } from "../services/auth/auth-service.js";
+import { createStreamChunkSmoother } from "../services/llama/stream-smoother.js";
 
 export async function chatRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Params: { id: string }; Body: { content: string } }>(
@@ -19,6 +21,10 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       const active = await getSession(id);
       if (!active) return reply.status(404).send({ error: "session not found" });
 
+      if (active.meta.userId !== req.user!.id) {
+        return reply.status(403).send({ error: "forbidden" });
+      }
+
       const abortController = new AbortController();
       setAbortController(id, abortController);
 
@@ -30,14 +36,18 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
       });
 
       let fullResponse = "";
+      const tokensBefore = active.contextSequence.tokenMeter.getState();
+      const smoother = createStreamChunkSmoother((chunk) => {
+        fullResponse += chunk;
+        reply.raw.write(`data: ${JSON.stringify({ delta: chunk, type: "token" })}\n\n`);
+      });
 
       try {
         await active.session.prompt(content, {
           signal: abortController.signal,
           stopOnAbortSignal: true,
           onTextChunk(chunk: string) {
-            fullResponse += chunk;
-            reply.raw.write(`data: ${JSON.stringify({ delta: chunk, type: "token" })}\n\n`);
+            smoother.push(chunk);
           },
         });
       } catch (err: unknown) {
@@ -47,9 +57,28 @@ export async function chatRoutes(app: FastifyInstance): Promise<void> {
           reply.raw.write(`data: ${JSON.stringify({ type: "error", message: String(err) })}\n\n`);
         }
       } finally {
+        smoother.flush();
+        smoother.stop();
         clearAbortController(id);
         await persistSession(id);
-        reply.raw.write(`event: done\ndata: ${JSON.stringify({ fullResponse })}\n\n`);
+
+        // Track token usage
+        const diff = active.contextSequence.tokenMeter.diff(tokensBefore);
+        const usedInputTokens = diff.usedInputTokens;
+        const usedOutputTokens = diff.usedOutputTokens;
+        const totalTokens = usedInputTokens + usedOutputTokens;
+        if (totalTokens > 0) {
+          await incrementTokenCount(req.user!.id, totalTokens).catch(() => {/* non-fatal */});
+        }
+
+        reply.raw.write(
+          `event: done\ndata: ${JSON.stringify({
+            fullResponse,
+            usedInputTokens,
+            usedOutputTokens,
+            totalTokens,
+          })}\n\n`
+        );
         reply.raw.end();
       }
     }

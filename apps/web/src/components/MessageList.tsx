@@ -26,6 +26,14 @@ export function MessageList({ messages }: Props) {
       {messages.map((msg, i) => (
         <div key={i} className={`message ${msg.role}`}>
           <div className="message-role">{msg.role === "user" ? "You" : "Assistant"}</div>
+          {msg.tokenCount !== undefined && (() => {
+            const direction = msg.tokenDirection ?? (msg.role === "user" ? "upstream" : "downstream");
+            return (
+              <div className={`message-token-direction ${direction}`}>
+                {direction === "upstream" ? "↑" : "↓"} {msg.tokenCount.toLocaleString()} {direction}
+              </div>
+            );
+          })()}
           {msg.imageDataUrl && (
             <div className="message-image">
               <img src={msg.imageDataUrl} alt="attached" />
