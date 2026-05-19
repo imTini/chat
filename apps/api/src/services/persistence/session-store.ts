@@ -92,3 +92,8 @@ export async function deleteSessionFile(id: string): Promise<void> {
   const db = getDb();
   await db.delete(sessions).where(eq(sessions.id, id));
 }
+
+export async function renameSessionInDb(id: string, name: string): Promise<void> {
+  const db = getDb();
+  await db.update(sessions).set({ name }).where(eq(sessions.id, id));
+}

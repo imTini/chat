@@ -4,6 +4,7 @@ import {
   getSession,
   getSessionMetasByUser,
   deleteSession,
+  renameSession,
 } from "../services/llama/session-manager.js";
 
 export async function sessionRoutes(app: FastifyInstance): Promise<void> {
@@ -30,6 +31,23 @@ export async function sessionRoutes(app: FastifyInstance): Promise<void> {
     }
     return session.meta;
   });
+
+  app.patch<{ Params: { id: string }; Body: { name: string } }>(
+    "/api/sessions/:id",
+    async (req, reply) => {
+      const { name } = req.body;
+      if (!name || !name.trim()) {
+        return reply.status(400).send({ error: "name required" });
+      }
+      const session = await getSession(req.params.id);
+      if (!session) return reply.status(404).send({ error: "session not found" });
+      if (session.meta.userId !== req.user!.id) {
+        return reply.status(403).send({ error: "forbidden" });
+      }
+      const updated = await renameSession(req.params.id, name.trim());
+      return updated;
+    }
+  );
 
   app.delete<{ Params: { id: string } }>("/api/sessions/:id", async (req, reply) => {
     const session = await getSession(req.params.id);

@@ -6,6 +6,7 @@ import {
   listSessionMetas,
   loadSessionById,
   deleteSessionFile,
+  renameSessionInDb,
 } from "../persistence/session-store.js";
 import { v4 as uuidv4 } from "uuid";
 
@@ -175,6 +176,21 @@ export async function deleteSession(id: string): Promise<boolean> {
   sessionMetas.delete(id);
   await deleteSessionFile(id);
   return true;
+}
+
+export async function renameSession(id: string, name: string): Promise<SessionMeta> {
+  const meta = sessionMetas.get(id);
+  if (!meta) throw new Error("session not found");
+  meta.name = name;
+  // Persist: if active in memory use saveSession (preserves history), else direct DB update.
+  const active = sessions.get(id);
+  if (active) {
+    const history = active.session.getChatHistory();
+    await saveSession(id, meta, history);
+  } else {
+    await renameSessionInDb(id, name);
+  }
+  return { ...meta };
 }
 
 /** Dispose all in-memory contexts (e.g. before a model switch). */

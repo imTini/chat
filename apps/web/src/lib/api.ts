@@ -91,6 +91,17 @@ export async function deleteSession(id: string): Promise<void> {
   await fetch(`${API}/api/sessions/${id}`, { method: "DELETE", credentials: "include" });
 }
 
+export async function renameSession(id: string, name: string): Promise<SessionMeta> {
+  const res = await fetch(`${API}/api/sessions/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function stopGeneration(id: string): Promise<void> {
   await fetch(`${API}/api/sessions/${id}/stop`, { method: "POST", credentials: "include" });
 }

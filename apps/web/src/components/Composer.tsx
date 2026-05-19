@@ -1,4 +1,5 @@
 import { useState, useRef, KeyboardEvent, useEffect, useCallback, DragEvent, ChangeEvent } from "react";
+import { Send, Square, Paperclip, X } from "lucide-react";
 
 interface Props {
   onSend: (content: string, imageDataUrl?: string) => void;
@@ -15,12 +16,18 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+  }, [text]);
+
   const readImageFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setAttachedImage((ev.target?.result as string) ?? null);
-    };
+    reader.onload = (ev) => setAttachedImage((ev.target?.result as string) ?? null);
     reader.readAsDataURL(file);
   }, []);
 
@@ -66,10 +73,7 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
   }, [handlePaste]);
 
   useEffect(() => {
-    if (!hasVision) {
-      setAttachedImage(null);
-      setDragOver(false);
-    }
+    if (!hasVision) { setAttachedImage(null); setDragOver(false); }
   }, [hasVision]);
 
   const hasFilePayload = (event: DragEvent<HTMLElement>) =>
@@ -110,85 +114,118 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
     event.preventDefault();
     setDragOver(false);
     if (!hasVision || disabled || generating) return;
-    const imageFile = Array.from(event.dataTransfer.files).find((file) =>
-      file.type.startsWith("image/")
-    );
+    const imageFile = Array.from(event.dataTransfer.files).find((f) => f.type.startsWith("image/"));
     if (imageFile) readImageFile(imageFile);
   };
 
+  const canSend = (text.trim() || attachedImage) && !generating && !disabled;
+
   return (
     <div
-      className={`composer ${dragOver ? "drag-over" : ""}`}
+      className="px-4 py-3"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {hasVision && dragOver && <div className="composer-drop-hint">Drop an image to attach</div>}
-      {attachedImage && (
-        <div className="composer-image-preview">
-          <img src={attachedImage} alt="attached" />
-          <button
-            className="remove-image-btn"
-            onClick={() => setAttachedImage(null)}
-            title="Remove image"
+      <div
+        className={`rounded-xl overflow-hidden transition-colors ${dragOver ? "ring-2" : ""}`}
+        style={{
+          background: "var(--bg-elevated)",
+          border: `1px solid ${dragOver ? "var(--primary)" : "var(--border)"}`,
+        }}
+      >
+        {dragOver && hasVision && (
+          <div
+            className="px-4 py-2 text-sm text-center"
+            style={{ color: "var(--primary)", background: "var(--bg-panel)" }}
           >
-            ×
-          </button>
+            Drop image to attach
+          </div>
+        )}
+
+        {/* Attached image preview */}
+        {attachedImage && (
+          <div className="px-4 pt-3 flex items-start gap-2">
+            <div className="relative inline-block">
+              <img src={attachedImage} alt="attached" className="h-20 w-auto rounded-lg object-cover" />
+              <button
+                className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full text-xs"
+                style={{ background: "var(--destructive)", color: "#fff" }}
+                onClick={() => setAttachedImage(null)}
+              >
+                <X size={10} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Textarea */}
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKey}
+          placeholder={
+            disabled
+              ? "No session selected"
+              : hasVision
+              ? "Type a message… (paste or drop image)"
+              : "Type a message… (Enter to send)"
+          }
+          disabled={disabled || generating}
+          rows={1}
+          className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-sm outline-none"
+          style={{ color: "var(--text)", minHeight: "52px" }}
+        />
+
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 px-3 pb-3">
+          {hasVision && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileInput}
+                disabled={disabled || generating}
+              />
+              <button
+                className="flex items-center justify-center w-7 h-7 rounded-lg transition-opacity hover:opacity-70"
+                style={{ color: "var(--text-muted)" }}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled || generating}
+                title="Attach image"
+                type="button"
+              >
+                <Paperclip size={15} />
+              </button>
+            </>
+          )}
+
+          <span className="ml-auto flex items-center gap-1">
+            {generating ? (
+              <button
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium"
+                style={{ background: "var(--destructive)", color: "#fff" }}
+                onClick={onStop}
+              >
+                <Square size={11} fill="currentColor" /> Stop
+              </button>
+            ) : (
+              <button
+                className="flex items-center justify-center w-8 h-8 rounded-lg transition-opacity disabled:opacity-40"
+                style={{ background: "var(--primary)", color: "var(--primary-fg)" }}
+                onClick={handleSend}
+                disabled={!canSend}
+                title="Send (Enter)"
+              >
+                <Send size={14} />
+              </button>
+            )}
+          </span>
         </div>
-      )}
-      <textarea
-        ref={textareaRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKey}
-        placeholder={
-          disabled
-            ? "Select a session to start chatting"
-            : hasVision
-            ? "Type a message… (paste or drop an image)"
-            : "Type a message… (Enter to send, Shift+Enter for newline)"
-        }
-        disabled={disabled || generating}
-        rows={3}
-      />
-      <div className="composer-actions">
-        {hasVision && (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="file-input-hidden"
-              onChange={handleFileInput}
-              disabled={disabled || generating}
-              aria-label="Attach image"
-            />
-            <button
-              className="attach-btn btn-animated"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled || generating}
-              title="Attach image"
-              type="button"
-            >
-              📎
-            </button>
-          </>
-        )}
-        {generating ? (
-          <button key="stop" className="stop-btn btn-animated" onClick={onStop}>
-            <span className="btn-stop-icon">■</span> Stop
-          </button>
-        ) : (
-          <button
-            key="send"
-            className="send-btn btn-animated"
-            onClick={handleSend}
-            disabled={disabled || (!text.trim() && !attachedImage)}
-          >
-            Send
-          </button>
-        )}
       </div>
     </div>
   );

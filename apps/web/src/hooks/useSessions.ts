@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { fetchSessions, createSession, deleteSession, SessionMeta } from "../lib/api.js";
+import { fetchSessions, createSession, deleteSession, renameSession, type SessionMeta } from "../lib/api.js";
 
 export function useSessions() {
   const [sessions, setSessions] = useState<SessionMeta[]>([]);
@@ -25,5 +25,11 @@ export function useSessions() {
     setSessions((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  return { sessions, loading, load, create, remove };
+  const rename = useCallback(async (id: string, name: string) => {
+    const updated = await renameSession(id, name);
+    setSessions((prev) => prev.map((s) => (s.id === id ? updated : s)));
+    return updated;
+  }, []);
+
+  return { sessions, loading, load, create, remove, rename };
 }
