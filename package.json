@@ -8,7 +8,7 @@
   "author": "Martin Jude",
   "scripts": {
     "postinstall": "npm run models:pull",
-    "models:pull": "node-llama-cpp pull --dir ./models hf:ggml-org/MiniCPM-V-4.6-GGUF hf:unsloth/Qwen3.5-2B-GGUF hf:hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF hf:Andycurrent/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking_GGUF",
+    "models:pull": "node-llama-cpp pull --dir ./models hf:ggml-org/MiniCPM-V-4.6-GGUF hf:unsloth/Qwen3.5-2B-GGUF hf:hugging-quants/Llama-3.2-1B-Instruct-Q8_0-GGUF hf:zai-org/GLM-OCR",
     "dev": "concurrently \"npm --prefix apps/api run dev\" \"npm --prefix apps/web run dev\"",
     "dev:api": "npm --prefix apps/api run dev",
     "dev:web": "npm --prefix apps/web run dev",
