@@ -72,29 +72,29 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-y-auto items-center justify-center px-4 py-12">
-      <div className="w-full max-w-2xl flex flex-col gap-6">
+    <div className="flex flex-col flex-1 min-h-0 overflow-y-auto items-center justify-center px-8 py-16">
+      <div className="w-full max-w-3xl flex flex-col gap-8">
         {/* Greeting */}
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text)" }}>
+        <h1 className="text-4xl font-bold px-4" style={{ color: "var(--text)" }}>
           {getGreeting(user?.username)}
         </h1>
 
         {/* Prompt box */}
         <div
-          className="rounded-xl overflow-hidden"
+          className="rounded-2xl overflow-hidden shadow-sm"
           style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
         >
           {/* Attached image preview */}
           {attachedImage && (
-            <div className="px-4 pt-3 flex items-start gap-2">
+            <div className="px-6 pt-5 flex items-start gap-2">
               <div className="relative inline-block">
-                <img src={attachedImage} alt="attached" className="h-20 w-auto rounded-lg object-cover" />
+                <img src={attachedImage} alt="attached" className="h-24 w-auto rounded-lg object-cover" />
                 <button
-                  className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full text-xs"
+                  className="absolute -top-2 -right-2 flex items-center justify-center w-6 h-6 rounded-full text-xs"
                   style={{ background: "var(--destructive)", color: "#fff" }}
                   onClick={() => setAttachedImage(null)}
                 >
-                  <X size={10} />
+                  <X size={12} />
                 </button>
               </div>
             </div>
@@ -109,24 +109,24 @@ export function HomePage() {
             placeholder="Ask anything…"
             disabled={loading}
             rows={1}
-            className="w-full resize-none bg-transparent px-4 pt-4 pb-3 text-sm outline-none"
-            style={{ color: "var(--text)", minHeight: "56px" }}
+            className="w-full resize-none bg-transparent px-6 pt-6 pb-4 text-base outline-none"
+            style={{ color: "var(--text)", minHeight: "64px" }}
           />
 
           {/* Footer toolbar */}
-          <div className="flex items-center gap-2 px-3 pb-3">
+          <div className="flex items-center gap-3 px-5 pb-5">
             {/* File attach */}
             {hasVision && (
               <>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) readImageFile(f); e.target.value = ""; }} />
                 <button
-                  className="flex items-center justify-center w-8 h-8 rounded-lg hover:opacity-70 transition-opacity"
+                  className="flex items-center justify-center w-9 h-9 rounded-lg hover:opacity-70 transition-opacity"
                   style={{ color: "var(--text-muted)" }}
                   onClick={() => fileInputRef.current?.click()}
                   title="Attach image"
                   type="button"
                 >
-                  <Paperclip size={15} />
+                  <Paperclip size={18} />
                 </button>
               </>
             )}
@@ -136,13 +136,13 @@ export function HomePage() {
 
             {/* Send button */}
             <button
-              className="flex items-center justify-center w-8 h-8 rounded-lg ml-auto transition-opacity disabled:opacity-40"
+              className="flex items-center justify-center w-9 h-9 rounded-lg ml-auto transition-opacity disabled:opacity-40"
               style={{ background: "var(--primary)", color: "var(--primary-fg)" }}
               disabled={!input.trim() || loading}
               onClick={() => handleSubmit(input)}
               title="Send (Enter)"
             >
-              <Send size={14} />
+              <Send size={16} />
             </button>
           </div>
         </div>
@@ -152,7 +152,7 @@ export function HomePage() {
           {QUICK_CHATS.map((q) => (
             <button
               key={q.label}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors hover:opacity-80"
+              className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm transition-colors hover:opacity-80"
               style={{
                 background: "var(--bg-elevated)",
                 border: "1px solid var(--border)",
@@ -171,7 +171,7 @@ export function HomePage() {
 }
 
 function ModelSelector() {
-  const { models, currentModel, switchModel, addToast } = useApp();
+  const { models, currentModel, switchModel, addToast, modelsLoading, refreshSessions } = useApp();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -193,6 +193,7 @@ function ModelSelector() {
       await switchModel(filename);
       const m = models.find((m) => m.filename === filename);
       addToast(`Loaded ${m?.name ?? filename}`, "success");
+      await refreshSessions();
     } catch {
       addToast("Failed to load model", "error");
     }
@@ -201,13 +202,14 @@ function ModelSelector() {
   return (
     <div className="relative" ref={ref}>
       <button
-        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-opacity hover:opacity-70"
+        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40"
         style={{ color: "var(--text-muted)", background: "var(--bg-panel)" }}
         onClick={() => setOpen((v) => !v)}
+        disabled={modelsLoading}
         title="Select model"
       >
         <span className="max-w-32 truncate">{currentModel?.name ?? "No model"}</span>
-        <ChevronDown size={11} />
+        <ChevronDown size={14} />
       </button>
       {open && (
         <div
@@ -217,7 +219,7 @@ function ModelSelector() {
           {models.map((m) => (
             <button
               key={m.filename}
-              className="flex flex-col w-full px-3 py-2 hover:opacity-80 transition-opacity text-left gap-0.5"
+              className="flex flex-col w-full px-4 py-3 hover:opacity-80 transition-opacity text-left gap-0.5"
               style={{ color: m.isLoaded ? "var(--primary)" : "var(--text)" }}
               onClick={() => handleSwitch(m.filename)}
             >

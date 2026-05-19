@@ -76,7 +76,7 @@ function SessionItem({
       <MessageCircle size={14} className="shrink-0 mr-2 opacity-60" />
       {!collapsed && (
         <>
-          <span className="flex-1 truncate pr-1" style={{ color: "var(--text)" }}>{session.name}</span>
+          <span className="flex-1 truncate pr-1" style={{ color: "var(--text)", paddingLeft: "10px" }}>{session.name}</span>
           <div className="shrink-0 ml-auto opacity-0 group-hover:opacity-100 transition-opacity relative" ref={menuRef}>
             <button
               className="flex items-center justify-center w-5 h-5 rounded"
@@ -119,7 +119,7 @@ function NavButton({ icon, label, collapsed, kbd, onClick }: {
 }) {
   return (
     <button
-      className="flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm transition-colors"
+      className="flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm transition-colors"
       style={{ color: "var(--text-muted)", background: "transparent" }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--bg-hover)"; (e.currentTarget as HTMLElement).style.color = "var(--text)"; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-muted)"; }}
@@ -187,8 +187,8 @@ export function Sidebar() {
       style={{ background: "var(--bg-elevated)", borderRight: "1px solid var(--border)" }}
     >
       {/* Header */}
-      <div className="flex items-center px-3 py-3 gap-2 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-        {!collapsed && <span className="flex-1 font-semibold text-sm" style={{ color: "var(--text)" }}>Chat</span>}
+      <div className="flex items-center px-4 py-3 gap-2 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+        {!collapsed && <span className="flex-1 font-semibold text-sm" style={{ color: "var(--text)", paddingLeft: "10px" }}>Chat</span>}
         <button
           className="flex items-center justify-center w-7 h-7 rounded-md hover:opacity-70 transition-opacity ml-auto"
           style={{ color: "var(--text-muted)" }}
@@ -200,7 +200,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <div className="px-2 pt-2 pb-1 flex flex-col gap-0.5 shrink-0">
+      <div className="px-3 pt-3 pb-1 flex flex-col gap-0.5 shrink-0">
         <NavButton icon={<MessageSquarePlus size={16} />} label="New chat" collapsed={collapsed} kbd="⌘O" onClick={() => navigate("/")} />
         <NavButton icon={<Search size={16} />} label="Search" collapsed={collapsed} kbd="⌘K" onClick={() => setCommandPaletteOpen(true)} />
       </div>
@@ -208,14 +208,14 @@ export function Sidebar() {
       {/* Session list */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 min-h-0">
         {sessionsLoading ? (
-          !collapsed && <div className="px-2 py-4 text-xs" style={{ color: "var(--text-muted)" }}>Loading…</div>
+          !collapsed && <div className="px-3 py-4 text-xs" style={{ color: "var(--text-muted)" }}>Loading…</div>
         ) : groups.length === 0 ? (
-          !collapsed && <div className="px-2 py-4 text-xs" style={{ color: "var(--text-muted)" }}>No chats yet. Start a new one!</div>
+          !collapsed && <div className="px-3 py-4 text-xs" style={{ color: "var(--text-muted)" }}>No chats yet. Start a new one!</div>
         ) : (
           groups.map((group) => (
             <div key={group.label} className="mb-2">
               {!collapsed && (
-                <div className="px-2 py-1 text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+                <div className="px-3 py-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                   {group.label}
                 </div>
               )}
@@ -242,7 +242,7 @@ export function Sidebar() {
       </div>
 
       {/* Footer */}
-      <div className="px-2 pb-2 pt-2 flex flex-col gap-0.5 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+      <div className="px-3 pb-3 pt-3 flex flex-col gap-0.5 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
         <NavButton icon={theme === "dark" ? <Sun size={16} /> : <Moon size={16} />} label={theme === "dark" ? "Light mode" : "Dark mode"} collapsed={collapsed} onClick={toggleTheme} />
         {!collapsed ? (
           <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm" style={{ color: "var(--text-muted)" }}>

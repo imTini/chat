@@ -35,7 +35,9 @@ export function ChatPage() {
     reset();
     fetchSessionMessages(sessionId)
       .then((msgs) => {
-        loadHistory(msgs);
+        if (!sentInitialRef.current) {
+          loadHistory(msgs);
+        }
       })
       .catch((err) => {
         console.error("Failed to load session history", err);

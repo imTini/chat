@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Check, Pencil, ChevronDown, Loader2 } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 
@@ -30,7 +31,7 @@ export function Navbar({ sessionId, sessionName, generating, onRename }: NavbarP
 
   return (
     <div
-      className="flex items-center gap-2 px-4 h-12 shrink-0"
+      className="flex items-center gap-2 px-6 h-14 shrink-0"
       style={{ borderBottom: "1px solid var(--border)", background: "var(--bg)" }}
     >
       {/* Title */}
@@ -91,7 +92,8 @@ export function Navbar({ sessionId, sessionName, generating, onRename }: NavbarP
 }
 
 function NavbarModelSelector() {
-  const { models, currentModel, switchModel, addToast } = useApp();
+  const { models, currentModel, switchModel, addToast, onModelSwitch, modelsLoading } = useApp();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -113,6 +115,7 @@ function NavbarModelSelector() {
       await switchModel(filename);
       const m = models.find((m) => m.filename === filename);
       addToast(`Loaded ${m?.name ?? filename}`, "success");
+      await onModelSwitch(() => navigate("/"));
     } catch {
       addToast("Failed to load model", "error");
     }
@@ -121,17 +124,18 @@ function NavbarModelSelector() {
   return (
     <div className="relative" ref={ref}>
       <button
-        className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-opacity hover:opacity-70"
+        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-opacity hover:opacity-70 disabled:opacity-40"
         style={{
           color: "var(--text-muted)",
           background: "var(--bg-panel)",
           border: "1px solid var(--border)",
         }}
         onClick={() => setOpen((v) => !v)}
+        disabled={modelsLoading}
         title="Select model"
       >
         <span className="max-w-36 truncate">{currentModel?.name ?? "No model"}</span>
-        <ChevronDown size={11} />
+        <ChevronDown size={14} />
       </button>
 
       {open && (
@@ -142,7 +146,7 @@ function NavbarModelSelector() {
           {models.map((m) => (
             <button
               key={m.filename}
-              className="flex items-center justify-between w-full px-3 py-2 hover:opacity-80 transition-opacity text-left gap-2"
+              className="flex items-center justify-between w-full px-5 py-3 hover:opacity-80 transition-opacity text-left gap-2"
               onClick={() => handleSwitch(m.filename)}
             >
               <div className="flex flex-col gap-0.5 min-w-0">

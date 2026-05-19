@@ -54,31 +54,31 @@ export function CommandPalette({ onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: "1px solid var(--border)" }}>
-          <Search size={16} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+        <div className="flex items-center gap-4 px-6 py-5" style={{ borderBottom: "1px solid var(--border)" }}>
+          <Search size={20} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search chats…"
-            className="flex-1 bg-transparent outline-none text-sm"
+            className="flex-1 bg-transparent outline-none text-base"
             style={{ color: "var(--text)" }}
           />
-          <button onClick={onClose} style={{ color: "var(--text-muted)" }}>
-            <X size={15} />
+          <button onClick={onClose} style={{ color: "var(--text-muted)" }} className="hover:opacity-70">
+            <X size={20} />
           </button>
         </div>
 
         {/* Results */}
-        <div className="max-h-80 overflow-y-auto py-1">
+        <div className="max-h-80 overflow-y-auto py-2">
           {items.length === 0 ? (
-            <div className="px-4 py-3 text-sm" style={{ color: "var(--text-muted)" }}>No results</div>
+            <div className="px-6 py-5 text-sm" style={{ color: "var(--text-muted)" }}>No results</div>
           ) : (
             items.map((item, idx) => (
               <button
                 key={item.id}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-left transition-colors"
+                className="flex items-center gap-4 w-full px-6 py-4 text-base text-left transition-colors"
                 style={{
                   background: idx === selectedIndex ? "var(--bg-hover)" : "transparent",
                   color: "var(--text)",

@@ -51,7 +51,7 @@ export function MessageList({ messages, onRegenerate, onEdit }: Props) {
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-4 py-6"
+      className="flex-1 overflow-y-auto px-6 py-8"
     >
       <div className="max-w-2xl mx-auto flex flex-col gap-6">
         {messages.map((msg, i) => (
@@ -96,7 +96,7 @@ function MessageItem({ message, index, isLastAssistant, onRegenerate, onEdit }: 
             />
           )}
           <div
-            className="px-4 py-2.5 rounded-2xl rounded-br-md text-sm whitespace-pre-wrap"
+            className="px-5 py-3 rounded-2xl rounded-br-md text-sm whitespace-pre-wrap"
             style={{ background: "var(--primary)", color: "var(--primary-fg)" }}
           >
             {message.content}
@@ -131,7 +131,6 @@ function MessageItem({ message, index, isLastAssistant, onRegenerate, onEdit }: 
           {!isStreaming && message.content && (
             <AssistantMessageActions
               message={message}
-              onCopy={() => {}}
               onRegenerate={isLastAssistant && onRegenerate ? () => onRegenerate(index) : undefined}
             />
           )}

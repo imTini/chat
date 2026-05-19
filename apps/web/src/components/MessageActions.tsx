@@ -4,7 +4,6 @@ import type { Message } from "@/hooks/useChat";
 
 interface AssistantActionsProps {
   message: Message;
-  onCopy: () => void;
   onRegenerate?: () => void;
   onVote?: (up: boolean) => void;
 }
@@ -14,14 +13,13 @@ interface UserActionsProps {
   onEdit?: (newText: string) => void;
 }
 
-export function AssistantMessageActions({ message, onCopy, onRegenerate, onVote }: AssistantActionsProps) {
+export function AssistantMessageActions({ message, onRegenerate, onVote }: AssistantActionsProps) {
   const [copied, setCopied] = useState(false);
   const [vote, setVote] = useState<boolean | null>(null);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content).catch(() => {});
     setCopied(true);
-    onCopy();
     setTimeout(() => setCopied(false), 1500);
   };
 

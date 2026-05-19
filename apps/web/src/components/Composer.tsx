@@ -122,7 +122,7 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
 
   return (
     <div
-      className="px-4 py-3"
+      className="px-5 py-4"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -175,12 +175,12 @@ export function Composer({ onSend, onStop, generating, disabled, hasVision }: Pr
           }
           disabled={disabled || generating}
           rows={1}
-          className="w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-sm outline-none"
+          className="w-full resize-none bg-transparent px-4 pt-4 pb-2.5 text-sm outline-none"
           style={{ color: "var(--text)", minHeight: "52px" }}
         />
 
         {/* Toolbar */}
-        <div className="flex items-center gap-2 px-3 pb-3">
+        <div className="flex items-center gap-2 px-4 pb-4">
           {hasVision && (
             <>
               <input
